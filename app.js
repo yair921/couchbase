@@ -43,44 +43,65 @@ const NodeCouchDb = require('node-couchdb')
 //     console.log(`Error in connection ${e}`)
 // })
 
-
-var couchbase = require('couchbase');
-var cluster = new couchbase.Cluster('couchbase://production-srv', {
-    username: 'Administrator',
-    password: 'password',
-});
-var bucket = cluster.bucket('default');
-var coll = bucket.defaultCollection();
-    
-coll.upsert('key', { name: 'Frank' }, (err, res) => {
-if (err) {
-    console.log(`Error upsert: ${err}`)
-}else{
-    coll.get('key', (err, res) => {
-        if (err) {
-            console.log(`Error get: ${err}`)
-        }else{
-            console.log(`The response get --> ${res.value}`);
-            // {name: Frank}
-        }
-    });
+function couchdb(req, res){
+    let host = req.query.host;
+    try {
+        var couchbase = require('couchbase');
+        var cluster = new couchbase.Cluster(host, {
+            username: 'Administrator',
+            password: 'password',
+        });
+        var bucket = cluster.bucket('default');
+        var coll = bucket.defaultCollection();
+        
+        coll.upsert('keyPrimary123', { name: 'Frank' }, (err) => {
+            if (err) {
+                console.log(`Error upsert: ${err}`)
+                res.send({
+                    host,
+                    error:`Error upsert: ${err}`
+                })
+            }else{
+                coll.get('keyPrimary123', (err, data) => {
+                    if (err) {
+                        console.log(`Error get: ${err}`)
+                        res.send({
+                            host,
+                            error:`Error get: ${err}`
+                        })
+                    }else{
+                        console.log(`The response get --> ${data.value}`);
+                        res.send({
+                            host,
+                            error:`Response get --> : ${JSON.stringify(data.value)}`
+                        })
+                        // {name: Frank}
+                    }
+                });
+            }
+        });
+    } catch (error) {
+        console.log(`Unexpected error: ${error}`)
+        res.send({
+            host,
+            error:`Unexpected error: ${error}`
+        })
+    }
 }
-});
 
             
+const app = express();
 
-// const app = express();
+app.set('view engine','ejs')
+app.set('views',path.join(__dirname,'views'))
 
-// app.set('view engine','ejs')
-// app.set('views',path.join(__dirname,'views'))
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({extended:false}))
 
-// app.use(bodyParser.json())
-// app.use(bodyParser.urlencoded({extended:false}))
+app.get('/',(req,res)=>{
+    couchdb(req, res);
+})
 
-// app.get('/',(req,res)=>{
-//     res.send('Working...')
-// })
-
-// app.listen(3000,()=>{
-//     console.log('Server running on port 3000...')
-// })
+app.listen(3000,()=>{
+    console.log('Server running on port 3000...')
+})
